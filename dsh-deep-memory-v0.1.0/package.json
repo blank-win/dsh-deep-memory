@@ -1,0 +1,42 @@
+{
+  "name": "dsh-deep-memory",
+  "displayName": "深度记忆",
+  "version": "0.1.0",
+  "private": false,
+  "description": "DSH 可移植记忆库：自动生成记忆文件、工作区交接、共享目录双向同步",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client-simple.js"
+  },
+  "files": [
+    "index.js",
+    "workspaces.js",
+    "client-simple.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "lib",
+    "scripts"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
+    }
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "memory",
+    "plugin"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,4 @@
+- insert:
+    - id: deep-memory
+      name: dsh-deep-memory
+      config: {}
