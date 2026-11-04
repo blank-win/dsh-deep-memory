@@ -133,7 +133,15 @@ A：应用导入
 
 ## 安装
 
-从 GitHub 下载源码后：
+从 GitHub 直接安装（推荐）：
+
+```powershell
+dsh plugin --profile desktop add "github:blank-win/dsh-deep-memory"
+# 或
+dsh plugin --profile desktop add "https://github.com/blank-win/dsh-deep-memory"
+```
+
+也可以下载源码后本地安装：
 
 ```powershell
 dsh plugin --profile desktop add "link:<插件目录>"
