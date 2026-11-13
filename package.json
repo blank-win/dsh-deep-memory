@@ -1,7 +1,7 @@
 {
   "name": "dsh-deep-memory",
   "displayName": "深度记忆",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": false,
   "description": "DSH 可移植记忆库：自动生成记忆文件、工作区交接、共享目录双向同步",
   "type": "module",
@@ -38,5 +38,8 @@
     "memory",
     "plugin"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "memory-card": "node scripts/make-memory-card.mjs"
+  }
 }

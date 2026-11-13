@@ -8,10 +8,30 @@ const PROJ = path.join(DSH_HOME, 'storages', 'session_projcache', 'sessions')
 const POLICY_DIR = path.join(DSH_HOME, 'deep-memory')
 const POLICY_FILE = path.join(POLICY_DIR, 'workspaces.json')
 const HANDOFF_DIR = path.join(POLICY_DIR, 'handoffs')
-const MEMORY_HINTS = [
-  path.join(os.homedir(), 'DeepMemory'),
-  path.join(os.homedir(), 'DeepMemory'),
-]
+const LIBRARY_CONFIG = path.join(POLICY_DIR, 'library.json')
+const READ_FILES = ['00-醒来先读我.md', '05-对话摘要.md', '07-会话脉络.md', '09-索引.md']
+
+// 记忆库位置：先读 library.json 的 root（用户实际配置），再退到默认目录。
+// 之前的实现把 ~/DeepMemory 写死两次，完全忽略 library.json，
+// 导致交接文档里写的记忆库路径可能根本不存在。
+function memoryRoots() {
+  const out = []
+  try {
+    const j = readJson(LIBRARY_CONFIG, {})
+    if (typeof j.root === 'string' && j.root.trim()) out.push(path.resolve(j.root))
+    for (const r of Array.isArray(j.previousRoots) ? j.previousRoots : []) {
+      if (typeof r === 'string' && r.trim()) out.push(path.resolve(r))
+    }
+  } catch {}
+  out.push(path.join(os.homedir(), 'DeepMemory'))
+  return [...new Set(out)]
+}
+function resolveMemoryRoot() {
+  const candidates = memoryRoots()
+  return candidates.find((p) => fs.existsSync(path.join(p, '00-醒来先读我.md')))
+    || candidates.find((p) => fs.existsSync(p))
+    || candidates[candidates.length - 1]
+}
 
 function readJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return fallback }
@@ -121,7 +141,9 @@ export function makeHandoff(workspacePath, { auto = false } = {}) {
   fs.mkdirSync(HANDOFF_DIR, { recursive: true })
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-')
   const file = path.join(HANDOFF_DIR, `${safeName(row.title)}-${stamp}.md`)
-  const memory = MEMORY_HINTS.find((p) => fs.existsSync(p)) || MEMORY_HINTS[0]
+  const memory = resolveMemoryRoot()
+  const memoryExists = fs.existsSync(memory)
+  const readFiles = READ_FILES.filter((f) => fs.existsSync(path.join(memory, f)))
   const last = (row.turnList || []).slice(0, 3)
   const lines = [
     '# 工作区交接',
@@ -134,11 +156,16 @@ export function makeHandoff(workspacePath, { auto = false } = {}) {
     `- 方式：${auto ? '自动阈值' : '手动'}`,
     '',
     '## 新会话先读',
-    `- 记忆库：${memory}`,
-    '- 先读 `00-醒来先读我.md`、`05-对话摘要.md`、`07-会话脉络.md`；需要细节再按 `09-索引` 翻 `08`。',
+    `- 记忆库：${memory}${memoryExists ? '' : '（这个目录现在不存在，需要先确认记忆库在哪）'}`,
+    readFiles.length
+      ? '- 先读 ' + readFiles.map((f) => '`' + f + '`').join('、') + '；需要细节再按 `08-长期记忆.md` 翻。'
+      : '- 记忆库里没找到 00/05/07 这些文件，先确认根目录对不对。',
     '- 旧会话未确认的事，不要当成已经完成；先看当前文件和未读消息。',
     '',
   ]
+  if (!last.length) {
+    lines.push('## 旧会话最后几轮', '（投影缓存里没有轮次摘要，只有上面的元信息；想知道上一轮聊了什么，得自己翻 session。）', '')
+  }
   if (last.length) {
     lines.push('## 旧会话最后几轮（机械摘要，不是全文）')
     for (const t of last) {

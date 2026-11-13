@@ -58,16 +58,46 @@
 AGENTS.md
 memory.jsonl
 views/
+日记/
+  2026-11-13.md
+  index.json
 ```
 
 其中：
 
 - `00–09` 是给人看的 Markdown
-- `memory.jsonl` 是机器索引
+- `memory.jsonl` 是机器索引（每个 node 可带 `src` 指回原话）
 - `views/` 是从索引生成的可读视图
+- `日记/` 是**按天的原话留底**（见下节）
 - `AGENTS.md` 告诉新会话先读哪些文件
 
-### 3. 工作区交接
+### 3. 日记（原话留底）
+
+摘要解决“记得住”，解决不了“回得去”。`memory.jsonl` 里的 node 是压缩后的文本，
+换会话以后就再也翻不到原话；日记补的就是这一段。
+
+- 每天一个 `日记/YYYY-MM-DD.md`，从 `<DSH_HOME>/sessions/` 的会话日志里抄录当日原话
+- 每条后面带锚点：`<!-- src: session-<id>#seq=<seq> -->`，
+  能直接定位到 `sessions/<工作区>/session-<id>/session.v4.jsonl.zstd` 里 `seq` 那一条
+- 只抄不改：用户与助手的可见文本；跳过 reasoning、工具调用、以及
+  `[记忆检索]`／`Current runtime context.`／`Time sampled while preparing turn`／
+  角色卡模板等系统注入片段
+- 同一天里反复注入的同一段话只留一条
+- `日记/index.json` 记录每天的会话数、消息数、字节数
+- 落地时机：插件启动 5 秒后补昨天+今天，之后每 15 分钟重写今天（历史日期不重写）
+
+`memory.jsonl` 的 node 新增可选字段 `src`：
+
+```json
+{
+  "source": "日记/2026-11-13.md",
+  "src": { "session": "session-xxxx", "seq": 1234, "at": 1763000000000, "role": "user", "diary": "日记/2026-11-13.md" }
+}
+```
+
+有了 `src`，记忆卡上的一条就能指出“这句话是哪天几点、哪个会话、第几条记录”，而不是只给一段空口摘要。
+
+### 4. 工作区交接
 
 - 每个工作区可以选：
   - 关闭
@@ -77,7 +107,7 @@ views/
 - 可以在会话菜单里「归档并转交」
 - 旧会话保留，不删除
 
-### 4. 同步
+### 5. 同步
 
 支持两种方式。
 
@@ -117,7 +147,7 @@ A：应用导入
 - `localsend-cli.exe` 才能真正自动指定发送文件和接收目录
 - `localsend_app.exe` 只能启动 GUI，仍需在 LocalSend 里手动选设备、手动设置接收目录
 
-### 5. 百度网盘
+### 6. 百度网盘
 
 目前**没有接入百度官方 API**。
 
@@ -313,6 +343,17 @@ lib/library-migrate.mjs       旧库迁移
 scripts/migrate-memory-library.mjs
 scripts/memory-sync.mjs
 ```
+
+---
+
+## 更新记录
+
+### 0.1.1
+- 修复：工作区交接文档里的「记忆库」路径写死 `~/DeepMemory`（还重复写了两遍），
+  忽略了 `library.json` 里配置的真实 root（比如把记忆库放在非默认盘符的某个目录），导致交接文档指向一个不存在的目录。
+  现在按 `library.json.root` → `previousRoots` → `~/DeepMemory` 依次解析，取第一个真实存在的。
+- 交接文档只列记忆库里**实际存在**的 `00/05/07/09`，缺哪个就在提示里说明。
+- 投影缓存拿不到轮次摘要时，明确写「没有轮次摘要」，不再留空白让人误以为读完了。
 
 ---
 

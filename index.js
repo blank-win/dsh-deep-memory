@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { listWorkspaces, setPolicy, makeHandoff, startWatcher, workspaceBySession } from './workspaces.js'
-import { loadJsonl, buildIndex, retrieve, findDuplicates, VERSION as MEMORY_VERSION } from './lib/memory-core.mjs'
+import { loadJsonl, buildIndex, retrieve, findDuplicates, makeNode, appendJsonl, VERSION as MEMORY_VERSION } from './lib/memory-core.mjs'
+import { writeDay, listDays, readDay, searchDiary, collectDay, diaryNodes, todayKey, DIARY_DIR_NAME } from './lib/diary.mjs'
 import { loadSyncConfig, initSync, exportDelta, importIncoming, importBundleDir, syncStatus, CONFIG_FILE as SYNC_CONFIG } from './lib/memory-sync.mjs'
 import { initLibrary, TEMPLATE_FILES } from './lib/library-template.mjs'
 import { migrateLibrary } from './lib/library-migrate.mjs'
@@ -310,6 +311,34 @@ async function handle(req, res) {
     try { return json(res, 200, listWorkspaces()) }
     catch (e) { return json(res, 200, { ok: false, error: e.message }) }
   }
+  if (req.method === 'GET' && p === '/diary/status') {
+    try {
+      const root = memoryRoot()
+      const days = listDays(root)
+      return json(res, 200, {
+        ok: true,
+        root,
+        dir: path.join(root, DIARY_DIR_NAME),
+        days: days.length,
+        last: days[0] || null,
+        recent: days.slice(0, 14),
+      })
+    } catch (e) { return json(res, 200, { ok: false, error: e.message }) }
+  }
+  if (req.method === 'GET' && p === '/diary/read') {
+    try {
+      const date = String(url.searchParams.get('date') || todayKey())
+      const md = readDay(memoryRoot(), date)
+      if (md == null) return json(res, 200, { ok: false, error: `没有 ${date} 的日记` })
+      return json(res, 200, { ok: true, date, markdown: md })
+    } catch (e) { return json(res, 200, { ok: false, error: e.message }) }
+  }
+  if (req.method === 'GET' && p === '/diary/search') {
+    try {
+      const q = String(url.searchParams.get('q') || '')
+      return json(res, 200, { ok: true, q, hits: searchDiary(memoryRoot(), q, { limit: 30 }) })
+    } catch (e) { return json(res, 200, { ok: false, error: e.message }) }
+  }
   if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'method not allowed' })
   if (!String(req.headers['content-type'] || '').includes('application/json')) {
     return json(res, 415, { ok: false, error: '必须是 application/json' })
@@ -327,6 +356,36 @@ async function handle(req, res) {
         text: h.node.text.slice(0, 500),
       }))
       return json(res, 200, { ok: true, q, nodes: nodes.length, hits })
+    } catch (e) { return json(res, 200, { ok: false, error: e.message }) }
+  }
+  if (p === '/diary/build') {
+    try {
+      const date = String(body.date || todayKey())
+      const r = writeDay(memoryRoot(), date, { force: body.force === true })
+      return json(res, 200, { ok: true, ...r })
+    } catch (e) { return json(res, 200, { ok: false, error: e.message }) }
+  }
+  if (p === '/diary/ingest') {
+    try {
+      const date = String(body.date || todayKey())
+      const day = collectDay(date)
+      const drafts = diaryNodes(day, {
+        onlyUser: body.onlyUser !== false,
+        max: Math.max(1, Math.min(200, Number(body.max) || 40)),
+        layer: String(body.layer || 'L3'),
+        region: String(body.region || 'daily'),
+      })
+      const file = path.join(memoryRoot(), 'memory.jsonl')
+      const existing = new Set(memoryNodes().map((n) => n.id))
+      const fresh = []
+      for (const d of drafts) {
+        const n = makeNode(d)
+        if (existing.has(n.id)) continue
+        existing.add(n.id)
+        fresh.push(n)
+      }
+      if (fresh.length) appendJsonl(file, fresh)
+      return json(res, 200, { ok: true, date, drafts: drafts.length, added: fresh.length })
     } catch (e) { return json(res, 200, { ok: false, error: e.message }) }
   }
   if (p === '/library/init') {
@@ -541,6 +600,85 @@ async function handle(req, res) {
   return json(res, 404, { ok: false, error: 'unknown api' })
 }
 
+// ── 记忆卡：从 memory.jsonl 生成 <记忆库>\记忆卡\记忆卡.md 与 记忆卡-prompt.md ──
+const CARD_SCRIPT = path.join(HERE, 'scripts', 'make-memory-card.mjs')
+
+async function buildMemoryCard() {
+  try {
+    if (!fs.existsSync(CARD_SCRIPT)) return
+    const src = path.join(memoryRoot(), 'memory.jsonl')
+    if (!fs.existsSync(src)) return
+    const out = path.join(memoryRoot(), '记忆卡', '记忆卡.md')
+    if (fs.existsSync(out) && fs.statSync(out).mtimeMs >= fs.statSync(src).mtimeMs) return
+    const node = process.env.DSH_NODE || process.execPath
+    await execFileAsync(node, [CARD_SCRIPT], {
+      timeout: 60000,
+      windowsHide: true,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    })
+  } catch (e) {
+    try { console.log('[deep-memory] 记忆卡没生成：' + String(e?.message ?? e)) } catch {}
+  }
+}
+
+// ── 短卡注入：把 记忆卡-短卡.md 同步进 <DSH_HOME>\AGENTS.md 的标记段 ──
+const AGENTS_FILE = path.join(DSH_HOME, 'AGENTS.md')
+const MEM_BEGIN = '<!-- XIAOBAI MEMORY CARD BEGIN -->'
+const MEM_END = '<!-- XIAOBAI MEMORY CARD END -->'
+
+function syncShortCardToAgents() {
+  try {
+    const src = path.join(memoryRoot(), '记忆卡', '记忆卡-短卡.md')
+    if (!fs.existsSync(src) || !fs.existsSync(AGENTS_FILE)) return
+    const card = fs.readFileSync(src, 'utf8').replace(/\r\n/g, '\n').trim()
+    if (!card) return
+    const block = [MEM_BEGIN, card, MEM_END].join('\n')
+    let text = fs.readFileSync(AGENTS_FILE, 'utf8').replace(/\r\n/g, '\n')
+    const i = text.indexOf(MEM_BEGIN)
+    const j = text.indexOf(MEM_END)
+    let next
+    if (i >= 0 && j > i) {
+      next = text.slice(0, i) + block + text.slice(j + MEM_END.length)
+    } else {
+      next = text.replace(/\s+$/, '') + '\n\n' + block + '\n'
+    }
+    if (next === text) return
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-')
+    fs.copyFileSync(AGENTS_FILE, AGENTS_FILE + '.bak-' + stamp)
+    fs.writeFileSync(AGENTS_FILE, next, 'utf8')
+  } catch (e) {
+    try { console.log('[deep-memory] 短卡没写进 AGENTS.md：' + String(e?.message ?? e)) } catch {}
+  }
+}
+
+function startCardBuilder() {
+  let stopped = false
+  const kick = () => { if (!stopped) buildMemoryCard().then(() => { if (!stopped) syncShortCardToAgents() }) }
+  const first = setTimeout(kick, 8000)
+  const timer = setInterval(kick, 10 * 60 * 1000)
+  return () => { stopped = true; clearTimeout(first); clearInterval(timer) }
+}
+
+function startDiaryBuilder() {
+  let stopped = false
+  const tick = async () => {
+    if (stopped) return
+    try {
+      const root = memoryRoot()
+      const today = todayKey()
+      const y = new Date(); y.setDate(y.getDate() - 1)
+      const yesterday = todayKey(y.getTime())
+      writeDay(root, yesterday, { force: false })
+      writeDay(root, today, { force: true })
+    } catch (e) {
+      try { console.log('[deep-memory] 日记没写成：' + String(e?.message ?? e)) } catch {}
+    }
+  }
+  const first = setTimeout(() => { tick() }, 5000)
+  const timer = setInterval(() => { tick() }, 15 * 60 * 1000)
+  return () => { stopped = true; clearTimeout(first); clearInterval(timer) }
+}
+
 export function apply(ctx) {
   runtimeCtx = ctx
   const off = ctx.webServer.register({
@@ -556,6 +694,10 @@ export function apply(ctx) {
   if (typeof off === 'function') ctx.effect(() => off, 'deep-memory: api')
   const stopWatch = startWatcher((msg) => { try { console.log(msg) } catch {} })
   ctx.effect(() => stopWatch, 'deep-memory: workspace handoff watcher')
+  const stopCards = startCardBuilder()
+  ctx.effect(() => stopCards, 'deep-memory: 记忆卡')
+  const stopDiary = startDiaryBuilder()
+  ctx.effect(() => stopDiary, 'deep-memory: 日记')
 }
 
 export default { name, inject, apply }
