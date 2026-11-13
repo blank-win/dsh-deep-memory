@@ -290,6 +290,9 @@ dsh plugin --profile desktop add "link:<插件目录>"
 - 冲突不会自动合并，只会保留并报告
 - 需要 DSH 的 `sessionController` / `workspaceRegistry` 才能归档转交
 - 换电脑后如果记忆内容为空，先检查是否只复制了 `memory.jsonl`，没有复制 `views/` 或 00–09
+- 日记只抄「用户和助手的可见文本」，工具调用、思考过程、系统注入片段不记录；因此日记不是完整审计日志
+- 日记的锚点指向 `<DSH_HOME>/sessions/` 下的会话日志，日志被清理后锚点就失效了（原文仍在 `日记/*.md` 里）
+- 每天日记的自动刷新依赖会话日志已落盘；当天日志还没写完时重写会被跳过（只增不减，避免把已有内容覆盖成空白）
 
 ---
 
@@ -340,6 +343,9 @@ lib/memory-core.mjs           记忆节点、检索、衰减、晋升
 lib/memory-sync.mjs           共享目录双向同步
 lib/library-template.mjs      记忆库模板
 lib/library-migrate.mjs       旧库迁移
+lib/diary.mjs                 日记：按天抄录原话 + src 锚点
+scripts/make-memory-card.mjs  生成记忆卡（短卡会同步进 AGENTS.md）
+scripts/move-work-log.mjs     把旧的工程日志并入记忆库
 scripts/migrate-memory-library.mjs
 scripts/memory-sync.mjs
 ```
