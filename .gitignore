@@ -1,4 +1,16 @@
 node_modules/
+<<<<<<< HEAD
 *.bak-before-*
 *.bak
 patch-handoff-root.py
+=======
+*.log
+*.tgz
+*.zip
+.DS_Store
+Thumbs.db
+
+# 本地备份
+*.bak
+*.bak-*
+>>>>>>> 206389b6998a29335e49353589ac0f34f0cb6d27
