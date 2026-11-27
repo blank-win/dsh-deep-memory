@@ -28,7 +28,12 @@
     "cordis.patch.yml",
     "README.md",
     "LICENSE",
-    "lib",
+    "lib/diary.mjs",
+    "lib/library-migrate.mjs",
+    "lib/library-template.mjs",
+    "lib/memory-core.mjs",
+    "lib/memory-sync.mjs",
+    "lib/wiki.mjs",
     "scripts"
   ],
   "dsh": {

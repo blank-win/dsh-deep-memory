@@ -1,0 +1,4 @@
+lib/room.mjs
+*.bak-before-*
+*.bak
+*.log
