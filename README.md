@@ -120,7 +120,7 @@ views/
 
 ### 6. 搬家包
 
-`GET /move/status` 看桌面有没有 `小白搬家包.zip`，`GET /move/download` 直接下载。
+`GET /move/status` 看桌面有没有 `搬家包.zip`，`GET /move/download` 直接下载。
 
 搬家包里带：记忆库、配置、面板程序、插件清单（哪些是 npm 装的、哪些是本地 link 的）。
 换机器时按清单把 link 的目录放回原路径，再跑一次 `npm install` 就行。
@@ -373,7 +373,7 @@ scripts/memory-sync.mjs
 ### 0.4.0
 - **认识层**：新增 `<记忆库>/认识/`，一个主题一页，`[[标题]]` 互链，目录自动重建，断链会标出来。
   每晚 22 点后自动生成当天素材（日记 + 手机回传），供整理用。
-- **搬家包**：`/move/status` 和 `/move/download`，配合面板「备份」按钮生成 `小白搬家包.zip`，
+- **搬家包**：`/move/status` 和 `/move/download`，配合面板「备份」按钮生成 `搬家包.zip`，
   里面带插件清单（npm / 本地 link 分开记）。
 - 去掉两处硬编码的本机路径。
 

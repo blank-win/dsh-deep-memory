@@ -198,7 +198,7 @@ async function openPath(target) {
 // 桌面搬家包路径（和面板 ExportMoveBundle 的落点一致）
 function moveBundlePath() {
   const home = process.env.USERPROFILE || os.homedir()
-  return path.join(home, 'Desktop', '\u5c0f\u767d\u642c\u5bb6\u5305.zip')
+  return path.join(home, 'Desktop', '\u642c\u5bb6\u5305.zip')
 }
 
 function statusPayload() {
