@@ -109,10 +109,10 @@ views/
 
 ### 5. 认识层（wiki）
 
-「发生了什么」写在记忆库，「她是谁」写在这里。
+「发生了什么」写在记忆库，「这个人是谁」写在这里。
 
 - 目录：`<记忆库>/认识/`
-- 一个主题一页，页名就是标题（比如「她」、「工作」、「日常」）
+- 一个主题一页，页名就是标题（比如「人」、「工作」、「日常」）
 - 页里用 `[[另一个标题]]` 互相链接，`目录.md` 由插件自动重建，断链会标出来
 - 接口：`GET /wiki/status`、`GET /wiki/list`、`GET /wiki/read?name=`、`POST /wiki/write`、`POST /wiki/reindex`
 - 每晚 22 点后，如果当天还没素材文件，会自动生成 `认识/_今日素材-<日期>.md`
@@ -362,7 +362,6 @@ lib/library-template.mjs      记忆库模板
 lib/library-migrate.mjs       旧库迁移
 lib/diary.mjs                 日记：按天抄录原话 + src 锚点
 scripts/make-memory-card.mjs  生成记忆卡（短卡会同步进 AGENTS.md）
-scripts/move-work-log.mjs     把旧的工程日志并入记忆库
 scripts/migrate-memory-library.mjs
 scripts/memory-sync.mjs
 ```
