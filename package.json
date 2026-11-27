@@ -3,7 +3,7 @@
   "displayName": "深度记忆",
   "version": "0.4.0",
   "private": false,
-  "description": "DSH 可移植记忆库：记忆文件、原话留底、认识层、小屋页面、工作区交接、跨机器搬家包",
+  "description": "DSH 可移植记忆库：记忆文件、原话留底、认识层、工作区交接、跨机器搬家包",
   "type": "module",
   "main": "./index.js",
   "repository": {

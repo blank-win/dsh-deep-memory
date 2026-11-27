@@ -12,7 +12,9 @@ import { loadSyncConfig, initSync, exportDelta, importIncoming, importBundleDir,
 import { initLibrary, TEMPLATE_FILES } from './lib/library-template.mjs'
 import { migrateLibrary } from './lib/library-migrate.mjs'
 import { ensureWiki, listPages, readPage, writePage, rebuildIndex, makeMaterial, listMaterials, wikiHealth, WIKI_DIR, INDEX_NAME } from './lib/wiki.mjs'
-import { handleRoom } from './lib/room.mjs'
+// 小屋页面是可选模块：没有 lib/room.mjs 时插件照常工作，只是不注册 /room 路由。
+let handleRoom = null
+try { ({ handleRoom } = await import('./lib/room.mjs')) } catch {}
 
 export const name = 'deep-memory'
 export const inject = ['webServer', 'sessionController', 'workspaceRegistry', 'clientModules']
@@ -256,6 +258,7 @@ async function handle(req, res) {
   const p = url.pathname.slice(PREFIX.length) || '/'
   if (req.method === 'GET' && p === '/status') return json(res, 200, statusPayload())
   if (req.method === 'GET' && (p === '/room' || p === '/room/' || p.startsWith('/room/'))) {
+    if (!handleRoom) return json(res, 404, { ok: false, error: 'room module not installed' })
     const sub = p.slice('/room'.length) || '/'
     if (handleRoom(req, res, sub, memoryRoot())) return
     return json(res, 404, { ok: false, error: 'no such room path' })
