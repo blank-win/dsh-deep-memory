@@ -16,7 +16,7 @@ import os from 'node:os';
 const DRY = process.argv.includes('--dry');
 const BUDGET = 6000; // 注入版最多多少字
 const SHORT_BUDGET = 1600; // 每轮注入的短卡最多多少字
-const SHORT_VIEWS = new Set(['00', '01', '07']); // 短卡只收：醒来先读我 / 她 / 会话脉络
+const SHORT_VIEWS = new Set(['00', '01', '07']); // 短卡只收：醒来先读我 / 关于用户 / 会话脉络
 
 function dshHome() {
   return process.env.DSH_HOME || path.join(os.homedir(), '.dsh');
@@ -177,7 +177,7 @@ function renderPrompt(entries, stamp) {
   return head.concat(lines).join('\n') + '\n';
 }
 
-// 短卡：每轮都要在场的那一小段（身份、她、怎么说话），预算死卡在 SHORT_BUDGET。
+// 短卡：每轮都要在场的那一小段（身份、用户、怎么说话），预算死卡在 SHORT_BUDGET。
 function renderShort(entries, stamp) {
   const keep = [];
   for (const e of entries) {
