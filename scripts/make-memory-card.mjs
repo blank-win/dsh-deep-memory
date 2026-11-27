@@ -127,7 +127,7 @@ function renderCard(entries, stamp) {
     byView.get(k).push({ e, c });
   }
   const lines = [];
-  lines.push(`# 记忆卡 · 小白`);
+  lines.push(`# 记忆卡`);
   lines.push('');
   lines.push(`> 生成于 ${stamp}，由记忆库自动整理。手改会被下次生成覆盖。`);
   lines.push('> 符号：● 清晰　○ 清楚　◔ 模糊　· 只剩影子');
