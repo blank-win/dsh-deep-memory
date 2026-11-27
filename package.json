@@ -1,9 +1,9 @@
 {
   "name": "dsh-deep-memory",
   "displayName": "深度记忆",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": false,
-  "description": "DSH 可移植记忆库：自动生成记忆文件、按天留底原话、工作区交接、共享目录双向同步",
+  "description": "DSH 可移植记忆库：记忆文件、原话留底、认识层、小屋页面、工作区交接、跨机器搬家包",
   "type": "module",
   "main": "./index.js",
   "repository": {
